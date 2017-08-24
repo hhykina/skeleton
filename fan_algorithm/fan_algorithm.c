@@ -209,6 +209,8 @@ static int calculate_closeloop(struct st_closeloop_obj_data *sensor_data, int cu
 	if (sensor_data->sensor_reading>=sensor_data->warning_temp)
 		g_Closeloopspeed = 100;
 
+	printf(" ### calculate_closeloop(struct*,int), g_Closeloopspeed: %d\n", g_Closeloopspeed); //TRACE
+
 	return 1;
 }
 
@@ -234,6 +236,7 @@ static int calculate_openloop (int sensorreading)
 	}
 
 	g_Openloopspeed = speed;
+	printf(" ### calculate_openloop(int), g_Openloopspeed: %d\n", g_Openloopspeed); //TRACE
 	return 1;
 }
 
@@ -358,6 +361,7 @@ static int fan_control_algorithm_monitor(void)
 	do {
 		/* Connect to the user bus this time */
 		rc = sd_bus_open_system(&bus);
+		printf("#####fan_ctrl_algo_mntr-sd_bus_open_sys(&bus), rc: %d\n", rc); //TRACE
 		if(rc < 0) {
 			fprintf(stderr, "Failed to connect to system bus for fan_algorithm: %s\n", strerror(-rc));
 			bus = sd_bus_flush_close_unref(bus);
@@ -376,6 +380,9 @@ static int fan_control_algorithm_monitor(void)
 					&bus_error,
 					&response,
 					NULL);
+		//printf("#####fan_ctrl_algo_mntr-sd_bus_call_method(bus,..,getPowerState,..), response: %p\n", response); //TRACE
+		//printf("#####fan_ctrl_algo_mntr-sd_bus_call_method(bus,..,getPowerState,..), &response: %p\n", &response); //TRACE
+
 		if(rc < 0) {
 			fprintf(stderr, "Failed to get power state from dbus: %s\n", bus_error.message);
 			goto finish;
@@ -389,14 +396,18 @@ static int fan_control_algorithm_monitor(void)
 		sd_bus_error_free(&bus_error);
 		response = sd_bus_message_unref(response);
 
+		printf(" ### fan_ctrl_algo_mntr, Power_state: %d\n", &Power_state); //TRACE
+
 		if (Power_state == 1 ) {
 
 			current_fanspeed = get_max_sensor_reading_Fan(bus, &g_FanSpeedObjPath);
+			printf("#####fan_ctrl_algo_mntr-get_max_sensor_reading_Fan(), current_fanspeed: %d\n", current_fanspeed); //TRACE
 			if (current_fanspeed <0)
 				current_fanspeed = 0;
 			else {
 				current_fanspeed = current_fanspeed*100;
 				current_fanspeed =(int) current_fanspeed / 255;
+				printf("#####fan_ctrl_algo_mntr-[Aft calculate]], current_fanspeed: %d\n", current_fanspeed); //TRACE
 			}
 			if (current_fanspeed > 100)
 				current_fanspeed = 100;
@@ -428,6 +439,8 @@ static int fan_control_algorithm_monitor(void)
 			}
 
 			if (closeloop_reading > 0 && openloop_reading > 0) {
+				printf("#####fan_ctrl_algo_mntr, g_Openloopspeed: %d\n", g_Openloopspeed); //TRACE
+				printf("#####fan_ctrl_algo_mntr, g_Closeloopspeed: %d\n", g_Closeloopspeed); //TRACE
 				if(g_Openloopspeed > g_Closeloopspeed) {
 					g_FanSpeed = g_Openloopspeed;
 				} else {
@@ -439,6 +452,7 @@ static int fan_control_algorithm_monitor(void)
 						g_FanSpeed = g_Openloopspeed;
 					first_time_set = 1;
 				}
+				printf("#####fan_ctrl_algo_mntr, g_FanSpeed: %d\n", g_FanSpeed); //TRACE
 
 
 				FinalFanSpeed = g_FanSpeed * 255;
@@ -483,6 +497,7 @@ static int fan_control_algorithm_monitor(void)
 			fan_led_port0 = FAN_LED_OFF;
 			fan_led_port1 = FAN_LED_OFF;
 		}
+		printf(" ### fan_ctrl_algo_mntr, FinalFanSpeed: %d\n", FinalFanSpeed); //TRACE
 
 		set_fanled(fan_led_port0,fan_led_port1, 0);
 
@@ -764,6 +779,8 @@ static int initial_fan_config(sd_bus *bus)
 
 int main(int argc, char *argv[])
 {
+	fprintf(stderr, "##### fan_ctrl_algo_mntr start!!! - fprintf\n"); //TRACE
+	printf("##### fan_ctrl_algo_mntr start!!! - printf\n"); //TRACE
 	return fan_control_algorithm_monitor();
 }
 
